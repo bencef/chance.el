@@ -22,13 +22,10 @@
              v)
     m))
 
-;; (ch/map #'(lambda (v) (* v v)) (ch/pure 5.0))
-
 (defun ch/d (sides)
-  (let ((m (make-hash-table :size sides)))
-    (cl-loop for i from 1 to 6
-             do (puthash i (/ 1.0 (float sides)) m))
-    m))
+  (apply #'ch/same
+         (cl-loop for i from 1 to sides
+                  collect i)))
 
 (defun ch/bind (ma mf)
   (let* ((s (hash-table-count ma))
