@@ -10,11 +10,6 @@
       (let ((acc (gethash value m 0.0)))
         (puthash value (+ acc (/ 1.0 (float size))) m)))))
 
-(defun ch/same (&rest pairs)
-  (if (oddp (length pairs))
-      (error "distribution not in pars"))
-  (cl-loop ))
-
 (defun ch/map (f v)
   (let ((m (make-hash-table)))
     (maphash #'(lambda (k v)
