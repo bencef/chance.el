@@ -1,0 +1,67 @@
+(defun ch/pure (v)
+  (let ((m (make-hash-table :size 1)))
+    (puthash v 1.0 m)
+    m))
+
+(defun ch/map (f v)
+  (let ((m (make-hash-table)))
+    (maphash #'(lambda (k v)
+                 (puthash (funcall f k) v m))
+             v)
+    m))
+
+;; (ch/map #'(lambda (v) (* v v)) (ch/pure 5.0))
+
+(defun ch/d (sides)
+  (let ((m (make-hash-table :size sides)))
+    (cl-loop for i from 1 to 6
+             do (puthash i (/ 1.0 (float sides)) m))
+    m))
+
+(defun ch/bind (ma mf)
+  (let* ((s (hash-table-count ma))
+         (m (make-hash-table :size (* s s))))
+    (maphash
+     #'(lambda (k v)
+         (maphash
+          #'(lambda (k1 v1)
+              (let ((acc (gethash k1 m 0.0)))
+                (puthash k1 (+ acc (* v v1)) m)))
+          (funcall mf k)))
+     ma)
+    m))
+
+(defmacro ch/let! (bindings &rest body)
+  (if (or (not (listp bindings))
+           (not (every #'listp bindings)))
+      (error "bindings must be a list of pairs")
+    (if (null bindings)
+        `(progn ,@body)
+      (let ((var (first (first bindings)))
+            (ma (second (first bindings))))
+        `(ch/bind ,ma #'(lambda (,var)
+                          (ch/let! ,(rest bindings) ,@body)))))))
+
+(defun ch/print (m)
+  (maphash
+   #'(lambda (k v)
+       (princ (format "%s -> %f\n"
+                      (prin1-to-string k)
+                      v)))
+   m))
+
+(provide 'chance)
+
+;; Chance of going to jail in monopoly because of throwing three
+;; doubles.
+;;
+;; (ch/print
+;;  (ch/let! ((d1 (ch/d 6))
+;;            (d2 (ch/d 6))
+;;            (d3 (ch/d 6))
+;;            (d4 (ch/d 6))
+;;            (d5 (ch/d 6))
+;;            (d6 (ch/d 6)))
+;;           (ch/pure (and (= d1 d2)
+;;                         (= d3 d4)
+;;                         (= d5 d6)))))
