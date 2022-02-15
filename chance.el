@@ -3,6 +3,18 @@
     (puthash v 1.0 m)
     m))
 
+(defun ch/same (&rest values)
+  (let* ((size (length values))
+         (m (make-hash-table :size size)))
+    (dolist (value values m)
+      (let ((acc (gethash value m 0.0)))
+        (puthash value (+ acc (/ 1.0 (float size))) m)))))
+
+(defun ch/same (&rest pairs)
+  (if (oddp (length pairs))
+      (error "distribution not in pars"))
+  (cl-loop ))
+
 (defun ch/map (f v)
   (let ((m (make-hash-table)))
     (maphash #'(lambda (k v)
