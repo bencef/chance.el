@@ -35,6 +35,8 @@
      ma)
     m))
 
+(put 'ch/let! 'lisp-indent-function 1)
+
 (defmacro ch/let! (bindings &rest body)
   (if (or (not (listp bindings))
            (not (every #'listp bindings)))
@@ -66,6 +68,6 @@
 ;;            (d4 (ch/d 6))
 ;;            (d5 (ch/d 6))
 ;;            (d6 (ch/d 6)))
-;;           (ch/pure (and (= d1 d2)
-;;                         (= d3 d4)
-;;                         (= d5 d6)))))
+;;    (ch/pure (and (= d1 d2)
+;;                  (= d3 d4)
+;;                  (= d5 d6)))))
