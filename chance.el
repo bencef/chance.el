@@ -13,7 +13,9 @@
 (defun ch/map (f v)
   (let ((m (make-hash-table)))
     (maphash #'(lambda (k v)
-                 (puthash (funcall f k) v m))
+                 (let* ((val (funcall f k))
+                        (old-chance (gethash val m 0.0)))
+                   (puthash val (+ old-chance v) m)))
              v)
     m))
 
