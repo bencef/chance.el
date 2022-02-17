@@ -1,3 +1,25 @@
+;; A library working with probability distributions.
+;;
+;; An example usage:
+;;
+;; Chance of going to jail in monopoly because of throwing three
+;; doubles.
+;;
+;; (ch/print
+;;  (ch/let! ((d1 (ch/d 6))
+;;            (d2 (ch/d 6))
+;;            (d3 (ch/d 6))
+;;            (d4 (ch/d 6))
+;;            (d5 (ch/d 6))
+;;            (d6 (ch/d 6)))
+;;    (ch/pure (and (= d1 d2)
+;;                  (= d3 d4)
+;;                  (= d5 d6)))))
+;;
+;; ;; t -> 0.004630
+;; ;; nil -> 0.995370
+;; ;; nil
+
 (defun ch/pure (v)
   "Create a distribution with a single event that is 100% certain
 to happen."
@@ -132,17 +154,3 @@ bigger than 3?
    m))
 
 (provide 'chance)
-
-;; Chance of going to jail in monopoly because of throwing three
-;; doubles.
-;;
-;; (ch/print
-;;  (ch/let! ((d1 (ch/d 6))
-;;            (d2 (ch/d 6))
-;;            (d3 (ch/d 6))
-;;            (d4 (ch/d 6))
-;;            (d5 (ch/d 6))
-;;            (d6 (ch/d 6)))
-;;    (ch/pure (and (= d1 d2)
-;;                  (= d3 d4)
-;;                  (= d5 d6)))))
