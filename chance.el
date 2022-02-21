@@ -43,6 +43,44 @@ Duplicates are allowed and are counted more than once.  For example:
       (let ((acc (gethash value m 0.0)))
         (puthash value (+ acc (/ 1.0 (float size))) m)))))
 
+(defun ch/events (&rest pairs)
+  "Creare a probability distribution where the chance for a given event is provided.
+Event / chance pairs are provided as cons cells.  Events without chance evenly
+fill up the rest of the distribution.
+
+	(ch/print
+	 (ch/events `(a . ,0.1) 'b `(c . ,0.2) 'd))
+
+	;; a -> 0.100000
+	;; c -> 0.200000
+	;; b -> 0.350000
+	;; d -> 0.350000
+	;; nil
+
+There are infinite ways that this can go wrong and none of them are checked:
+- Sum over 1.0
+- Events represented as cons cells with a number in cdr
+- The same event with and without an explicit chance
+- Etc."
+  (labels ((has-chance (x) (and (consp x) (typep (cdr x) 'float)))
+           (standalone (x) (not (has-chance x))))
+    (let ((with-chance (remove-if-not #'has-chance pairs))
+          (without-chance (remove-if-not #'standalone pairs))
+          (acc 0.0)
+          (m (make-hash-table :size (length pairs))))
+      ;; Collect events with explicit chances
+      (loop for (e . c) in with-chance
+            do (progn (incf acc c)
+                      (let ((old (gethash e m 0.0)))
+                        (puthash e (+ old c) m))))
+      ;; All remaining events have the same chance
+      (let ((c (/ (- 1.0 acc) (length without-chance))))
+        (dolist (e without-chance)
+          (let ((old (gethash e m 0.0)))
+            (puthash e (+ old c) m))))
+      m)))
+
+
 (defun ch/map (f v)
   "Apply transform `f' to the events in `v'.  This might change the number of events.  See:
 
