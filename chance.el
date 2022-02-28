@@ -27,6 +27,28 @@ to happen."
     (puthash v 1.0 m)
     m))
 
+(defun ch/--extract-test-fn (args)
+  "Extract the test function from the argument list.
+This is for simulating a `:test' keyword argument.
+
+	(destructuring-bind (test-fn . args) (ch/--extract-test-fn (list 'a :test 'eq 'b))
+	  (list test-fn args))
+
+	;; (eq (a b))"
+  (let ((test-fn 'eql)
+        (rest (list)))
+    (do ((tail args))
+        ((null tail))
+      (if (eq :test (car tail))
+          (progn
+            (setf test-fn (cadr tail))
+            (setf tail (cddr tail)))
+        (progn
+          (push (car tail) rest)
+          (setf tail (cdr tail)))))
+    (cons test-fn (nreverse rest))))
+
+
 (defun ch/same (&rest values)
   "Create a probability distribution where every event has the same chance of happening.
 Duplicates are allowed and are counted more than once.  For example:
@@ -36,12 +58,34 @@ Duplicates are allowed and are counted more than once.  For example:
 
 	;; win -> 0.333333
 	;; lose -> 0.666667
+	;; nil
+
+This function also takes a `:test' argument like so:
+
+	(ch/print
+	 (ch/same (cons 1 2) (cons 1 2)))
+
+	;; (1 . 2) -> 0.500000
+	;; (1 . 2) -> 0.500000
+	;; nil
+
+	(ch/print
+	 (ch/same :test 'equal (cons 1 2) (cons 1 2)))
+
+	;; (1 . 2) -> 1.000000
+	;; nil
+
+	(ch/print
+	 (ch/same (cons 1 2) (cons 1 2) :test 'equal))
+
+	;; (1 . 2) -> 1.000000
 	;; nil"
-  (let* ((size (length values))
-         (m (make-hash-table :size size)))
-    (dolist (value values m)
-      (let ((acc (gethash value m 0.0)))
-        (puthash value (+ acc (/ 1.0 (float size))) m)))))
+  (destructuring-bind (test-fn . values) (ch/--extract-test-fn values)
+    (let* ((size (length values))
+           (m (make-hash-table :size size :test test-fn)))
+      (dolist (value values m)
+        (let ((acc (gethash value m 0.0)))
+          (puthash value (+ acc (/ 1.0 (float size))) m))))))
 
 (defun ch/events (&rest pairs)
   "Creare a probability distribution where the chance for a given event is provided.
