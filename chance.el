@@ -147,7 +147,7 @@ There are infinite ways that this can go wrong and none of them are checked:
          (cl-loop for i from 1 to sides
                   collect i)))
 
-(defun ch/bind (ma mf)
+(defun ch/bind (ma mf &rest keyword-args)
   "Monadic bind.  Applies `mf' to all events in `ma' and combines the resulting events
 under a single distribution.
 
@@ -164,9 +164,13 @@ After a coin flip if it was tails it can be rethrown once:
 
 	;; heads -> 0.750000
 	;; tails -> 0.250000
-	;; nil"
-  (let* ((s (hash-table-count ma))
-         (m (make-hash-table :size (* s s))))
+	;; nil
+
+This function accepts a `:test' keyword argument like so:
+	(ch/bind val #'fun :test 'eq)"
+  (let* ((test-fn (car (ch/--extract-test-fn keyword-args)))
+         (s (hash-table-count ma))
+         (m (make-hash-table :size (* s s) :test test-fn)))
     (maphash
      #'(lambda (k v)
          (maphash
@@ -205,7 +209,7 @@ is equvalent to:
 Multiple binding are possible and the form of a binding can refer to a previous value:
 
 Throwing with a six sided dice.  If the result is bigger than 3 then cast another six
-sided die, otherwise cast a 20 sided die.  What's the chance that the final throw is
+sided die, otherwise cast a 20 sided die.  What's the chance that the filpped throw is
 bigger than 3?
 
 	(ch/print
@@ -215,16 +219,26 @@ bigger than 3?
 
 	;; nil -> 0.325000
 	;; t -> 0.675000
-	;; nil"
+	;; nil
+
+Bindings can contain a `:test' keyword argument which is passed along to `ch/bind'
+
+	(ch/let! ((val form :test eq))
+	  E[val])
+
+NOTE: no need for quoting the test function."
   (if (or (not (listp bindings))
            (not (every #'listp bindings)))
       (error "bindings must be a list of pairs")
     (if (null bindings)
         `(progn ,@body)
-      (let ((var (first (first bindings)))
-            (ma (second (first bindings))))
-        `(ch/bind ,ma #'(lambda (,var)
-                          (ch/let! ,(rest bindings) ,@body)))))))
+      (destructuring-bind (test-fn . first-binding)
+          (ch/--extract-test-fn (first bindings))
+        (let ((var (first first-binding))
+              (ma (second first-binding)))
+          `(ch/bind ,ma #'(lambda (,var)
+                            (ch/let! ,(rest bindings) ,@body))
+                    :test ',test-fn))))))
 
 (defun ch/print (m)
   "Print a probability distribution."
