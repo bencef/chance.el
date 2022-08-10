@@ -209,7 +209,7 @@ is equvalent to:
 Multiple binding are possible and the form of a binding can refer to a previous value:
 
 Throwing with a six sided dice.  If the result is bigger than 3 then cast another six
-sided die, otherwise cast a 20 sided die.  What's the chance that the filpped throw is
+sided die, otherwise cast a 20 sided die.  What's the chance that the second throw is
 bigger than 3?
 
 	(ch/print
