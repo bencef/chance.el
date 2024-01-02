@@ -31,14 +31,14 @@ to happen."
   "Extract the test function from the argument list.
 This is for simulating a `:test' keyword argument.
 
-	(destructuring-bind (test-fn . args) (ch/--extract-test-fn (list 'a :test 'eq 'b))
+	(cl-destructuring-bind (test-fn . args) (ch/--extract-test-fn (list 'a :test 'eq 'b))
 	  (list test-fn args))
 
 	;; (eq (a b))"
   (let ((test-fn 'eql)
         (rest (list)))
-    (do ((tail args))
-        ((null tail))
+    (cl-do ((tail args))
+           ((null tail))
       (if (eq :test (car tail))
           (progn
             (setf test-fn (cadr tail))
@@ -80,7 +80,7 @@ This function also takes a `:test' argument like so:
 
 	;; (1 . 2) -> 1.000000
 	;; nil"
-  (destructuring-bind (test-fn . values) (ch/--extract-test-fn values)
+  (cl-destructuring-bind (test-fn . values) (ch/--extract-test-fn values)
     (let* ((size (length values))
            (m (make-hash-table :size size :test test-fn)))
       (dolist (value values m)
@@ -109,7 +109,7 @@ There are infinite ways that this can go wrong and none of them are checked:
 - Events represented as cons cells with a number in cdr
 - The same event with and without an explicit chance
 - Etc."
-  (destructuring-bind (test-fn . pairs) (ch/--extract-test-fn pairs)
+  (cl-destructuring-bind (test-fn . pairs) (ch/--extract-test-fn pairs)
     (labels ((has-chance (x) (and (consp x) (typep (cdr x) 'float)))
              (standalone (x) (not (has-chance x))))
       (let ((with-chance (remove-if-not #'has-chance pairs))
@@ -118,7 +118,7 @@ There are infinite ways that this can go wrong and none of them are checked:
             (m (make-hash-table :size (length pairs))))
         ;; Collect events with explicit chances
         (loop for (e . c) in with-chance
-              do (progn (incf acc c)
+              cl-do (progn (incf acc c)
                         (let ((old (gethash e m 0.0)))
                           (puthash e (+ old c) m))))
         ;; All remaining events have the same chance
@@ -232,16 +232,16 @@ Bindings can contain a `:test' keyword argument which is passed along to `ch/bin
 
 NOTE: no need for quoting the test function."
   (if (or (not (listp bindings))
-           (not (every #'listp bindings)))
+           (not (cl-every #'listp bindings)))
       (error "bindings must be a list of pairs")
     (if (null bindings)
         `(progn ,@body)
-      (destructuring-bind (test-fn . first-binding)
-          (ch/--extract-test-fn (first bindings))
-        (let ((var (first first-binding))
-              (ma (second first-binding)))
+      (cl-destructuring-bind (test-fn . first-binding)
+          (ch/--extract-test-fn (cl-first bindings))
+        (let ((var (cl-first first-binding))
+              (ma (cl-second first-binding)))
           `(ch/bind ,ma #'(lambda (,var)
-                            (ch/let! ,(rest bindings) ,@body))
+                            (ch/let! ,(cl-rest bindings) ,@body))
                     :test ',test-fn))))))
 
 (defun ch/print (m)
