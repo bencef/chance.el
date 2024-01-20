@@ -110,8 +110,8 @@ There are infinite ways that this can go wrong and none of them are checked:
 - The same event with and without an explicit chance
 - Etc."
   (cl-destructuring-bind (test-fn . pairs) (ch/--extract-test-fn pairs)
-    (labels ((has-chance (x) (and (consp x) (typep (cdr x) 'float)))
-             (standalone (x) (not (has-chance x))))
+    (cl-labels ((has-chance (x) (and (consp x) (typep (cdr x) 'float)))
+                (standalone (x) (not (has-chance x))))
       (let ((with-chance (remove-if-not #'has-chance pairs))
             (without-chance (remove-if-not #'standalone pairs))
             (acc 0.0)
