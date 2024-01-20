@@ -103,24 +103,24 @@ fill up the rest of the distribution.
 
 This function takes a `:test' keyword argument.  See the documentation of
 the `ch/same' function.
-
+f
 There are infinite ways that this can go wrong and none of them are checked:
 - Sum over 1.0
 - Events represented as cons cells with a number in cdr
 - The same event with and without an explicit chance
 - Etc."
   (cl-destructuring-bind (test-fn . pairs) (ch/--extract-test-fn pairs)
-    (cl-labels ((has-chance (x) (and (consp x) (typep (cdr x) 'float)))
+    (cl-labels ((has-chance (x) (and (consp x) (cl-typep (cdr x) 'float)))
                 (standalone (x) (not (has-chance x))))
-      (let ((with-chance (remove-if-not #'has-chance pairs))
-            (without-chance (remove-if-not #'standalone pairs))
+      (let ((with-chance (cl-remove-if-not #'has-chance pairs))
+            (without-chance (cl-remove-if-not #'standalone pairs))
             (acc 0.0)
             (m (make-hash-table :size (length pairs))))
         ;; Collect events with explicit chances
-        (loop for (e . c) in with-chance
-              cl-do (progn (incf acc c)
-                        (let ((old (gethash e m 0.0)))
-                          (puthash e (+ old c) m))))
+        (cl-loop for (e . c) in with-chance
+                 do (progn (cl-incf acc c)
+                           (let ((old (gethash e m 0.0)))
+                             (puthash e (+ old c) m))))
         ;; All remaining events have the same chance
         (let ((c (/ (- 1.0 acc) (length without-chance))))
           (dolist (e without-chance)
