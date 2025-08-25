@@ -103,7 +103,7 @@ fill up the rest of the distribution.
 
 This function takes a `:test' keyword argument.  See the documentation of
 the `ch/same' function.
-f
+
 There are infinite ways that this can go wrong and none of them are checked:
 - Sum over 1.0
 - Events represented as cons cells with a number in cdr
