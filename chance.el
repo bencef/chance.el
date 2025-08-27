@@ -16,8 +16,8 @@
 ;;                  (= d3 d4)
 ;;                  (= d5 d6)))))
 ;;
-;; ;; t -> 0.004630
-;; ;; nil -> 0.995370
+;; ;; t -> 1/216
+;; ;; nil -> 215/216
 ;; ;; nil
 
 (defun ch/make-rational (n d) (cons n d))
@@ -103,31 +103,31 @@ This is for simulating a `:test' keyword argument.
 Duplicates are allowed and are counted more than once.  For example:
 
 	(let ((monty-hall-first-choice (ch/same 'win 'lose 'lose)))
-          (ch/print monty-hall-first-choice))
+	  (ch/print monty-hall-first-choice))
 
-	;; win -> 0.333333
-	;; lose -> 0.666667
+	;; win -> 1/3
+	;; lose -> 2/3
 	;; nil
 
 This function also takes a `:test' argument like so:
 
 	(ch/print
-	 (ch/same (cons 1 2) (cons 1 2)))
+	  (ch/same (cons 1 2) (cons 1 2)))
 
-	;; (1 . 2) -> 0.500000
-	;; (1 . 2) -> 0.500000
+	;; (1 . 2) -> 1/2
+	;; (1 . 2) -> 1/2
 	;; nil
 
 	(ch/print
-	 (ch/same :test 'equal (cons 1 2) (cons 1 2)))
+	  (ch/same :test 'equal (cons 1 2) (cons 1 2)))
 
-	;; (1 . 2) -> 1.000000
+	;; (1 . 2) -> 1/1
 	;; nil
 
 	(ch/print
-	 (ch/same (cons 1 2) (cons 1 2) :test 'equal))
+	  (ch/same (cons 1 2) (cons 1 2) :test 'equal))
 
-	;; (1 . 2) -> 1.000000
+	;; (1 . 2) -> 1/1
 	;; nil"
   (cl-destructuring-bind (test-fn . values) (ch/--extract-test-fn values)
     (let* ((size (length values))
@@ -142,19 +142,19 @@ Event / chance pairs are provided as cons cells.  Events without chance evenly
 fill up the rest of the distribution.
 
 	(ch/print
-	 (ch/events `(a . ,0.1) 'b `(c . ,0.2) 'd))
+	  (ch/events `(a . ,(ch/make-rational 1 10)) 'b `(c . ,(ch/make-rational 2 10)) 'd))
 
-	;; a -> 0.100000
-	;; c -> 0.200000
-	;; b -> 0.350000
-	;; d -> 0.350000
+	;; a -> 1/10
+	;; c -> 1/5
+	;; b -> 7/20
+	;; d -> 7/20
 	;; nil
 
 This function takes a `:test' keyword argument.  See the documentation of
 the `ch/same' function.
 
 There are infinite ways that this can go wrong and none of them are checked:
-- Sum over 1.0
+- Sum over 1/1
 - Events represented as cons cells with a number in cdr
 - The same event with and without an explicit chance
 - Etc."
@@ -180,10 +180,10 @@ There are infinite ways that this can go wrong and none of them are checked:
 (defun ch/map (f v)
   "Apply transform `f' to the events in `v'.  This might change the number of events.  See:
 
-	(ch/print (ch/map #'oddp (ch/same 1 2 3 4 5)))
+	(ch/print (ch/map #'cl-oddp (ch/same 1 2 3 4 5)))
 
-	;; t -> 0.600000
-	;; nil -> 0.400000
+	;; t -> 3/5
+	;; nil -> 2/5
 	;; nil"
   (let ((m (make-hash-table)))
     (maphash #'(lambda (k v)
@@ -213,8 +213,8 @@ After a coin flip if it was tails it can be rethrown once:
 	    (ch/print
 	     (ch/bind toss #'maybe-rethrow))))
 
-	;; heads -> 0.750000
-	;; tails -> 0.250000
+	;; heads -> 3/4
+	;; tails -> 1/4
 	;; nil
 
 This function accepts a `:test' keyword argument like so:
@@ -267,8 +267,8 @@ bigger than 3?
 	           (ds (if (> d1 3) (ch/d 6) (ch/d 20))))
 	   (ch/pure (> ds 3))))
 
-	;; nil -> 0.325000
-	;; t -> 0.675000
+	;; nil -> 13/40
+	;; t -> 27/40
 	;; nil
 
 Bindings can contain a `:test' keyword argument which is passed along to `ch/bind'
