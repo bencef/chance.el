@@ -20,6 +20,55 @@
 ;; ;; nil -> 0.995370
 ;; ;; nil
 
+(defun ch/make-rational (n d) (cons n d))
+
+(defvar ch/--zero (ch/make-rational 0 1))
+(defvar ch/--one  (ch/make-rational 1 1))
+
+(defun ch/--rat-+ (&rest rats) ;; RATS!!!
+  (let ((lcm (apply #'cl-lcm (mapcar #'cdr rats))))
+    (cl-labels
+        ((get-n (rat)
+           (cl-destructuring-bind (n . d) rat
+             (* n (/ lcm d)))))
+      (let* ((ns (mapcar #'get-n rats))
+             (n (apply #'+ ns)))
+        (ch/make-rational n lcm)))))
+
+(defun ch/--rat-* (a b)
+  (cl-destructuring-bind
+      ((n1 . d1) . (n2 . d2))
+      (cons a b)
+    (let* ((gcd-n1-d2 (cl-gcd n1 d2))
+           (gcd-n2-d1 (cl-gcd n2 d1))
+           (n1 (/ n1 gcd-n1-d2))
+           (n2 (/ n2 gcd-n2-d1))
+           (d1 (/ d1 gcd-n2-d1))
+           (d2 (/ d2 gcd-n1-d2)))
+      (ch/make-rational (* n1 n2) (* d1 d2)))))
+
+(defun ch/--update-event (value chance m)
+  (let ((acc (gethash value m ch/--zero)))
+          (puthash value (ch/--rat-+ acc chance) m)))
+
+(defun ch/--rat-complement-1 (rat)
+  (cl-destructuring-bind (n . d) rat
+    (ch/make-rational (- d n) d)))
+
+(defun ch/--rat-simplify (rat)
+  (cl-destructuring-bind (n . d) rat
+    (let ((gcd (cl-gcd n d)))
+      (ch/make-rational (/ n gcd) (/ d gcd)))))
+
+(defun ch/--rational-p (x)
+  (and (consp x)
+       (numberp (car x))
+       (numberp (cdr x))))
+
+(defun ch/--print-rational (rat)
+  (cl-destructuring-bind (n . d) (ch/--rat-simplify rat)
+    (format "%d/%d" n d)))
+
 (defun ch/pure (v)
   "Create a distribution with a single event that is 100% certain
 to happen."
