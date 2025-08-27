@@ -73,7 +73,7 @@
   "Create a distribution with a single event that is 100% certain
 to happen."
   (let ((m (make-hash-table :size 1)))
-    (puthash v 1.0 m)
+    (puthash v ch/--one m)
     m))
 
 (defun ch/--extract-test-fn (args)
@@ -131,10 +131,10 @@ This function also takes a `:test' argument like so:
 	;; nil"
   (cl-destructuring-bind (test-fn . values) (ch/--extract-test-fn values)
     (let* ((size (length values))
-           (m (make-hash-table :size size :test test-fn)))
+           (m (make-hash-table :size size :test test-fn))
+           (chance (ch/make-rational 1 size)))
       (dolist (value values m)
-        (let ((acc (gethash value m 0.0)))
-          (puthash value (+ acc (/ 1.0 (float size))) m))))))
+        (ch/--update-event value chance m)))))
 
 (defun ch/events (&rest pairs)
   "Creare a probability distribution where the chance for a given event is provided.
@@ -159,24 +159,23 @@ There are infinite ways that this can go wrong and none of them are checked:
 - The same event with and without an explicit chance
 - Etc."
   (cl-destructuring-bind (test-fn . pairs) (ch/--extract-test-fn pairs)
-    (cl-labels ((has-chance (x) (and (consp x) (cl-typep (cdr x) 'float)))
+    (cl-labels ((has-chance (x) (and (consp x) (ch/--rational-p (cdr x))))
                 (standalone (x) (not (has-chance x))))
       (let ((with-chance (cl-remove-if-not #'has-chance pairs))
             (without-chance (cl-remove-if-not #'standalone pairs))
-            (acc 0.0)
+            (acc ch/--zero)
             (m (make-hash-table :size (length pairs))))
         ;; Collect events with explicit chances
         (cl-loop for (e . c) in with-chance
-                 do (progn (cl-incf acc c)
-                           (let ((old (gethash e m 0.0)))
-                             (puthash e (+ old c) m))))
+                 do (progn (setq acc (ch/--rat-+ acc c))
+                           (ch/--update-event e c m)))
         ;; All remaining events have the same chance
-        (let ((c (/ (- 1.0 acc) (length without-chance))))
-          (dolist (e without-chance)
-            (let ((old (gethash e m 0.0)))
-              (puthash e (+ old c) m))))
+        (when (> (length without-chance) 0)
+          (let ((c (ch/--rat-* (ch/--rat-complement-1 acc)
+                               (ch/make-rational 1 (length without-chance)))))
+            (dolist (e without-chance)
+              (ch/--update-event e c m))))
         m))))
-
 
 (defun ch/map (f v)
   "Apply transform `f' to the events in `v'.  This might change the number of events.  See:
@@ -188,9 +187,8 @@ There are infinite ways that this can go wrong and none of them are checked:
 	;; nil"
   (let ((m (make-hash-table)))
     (maphash #'(lambda (k v)
-                 (let* ((val (funcall f k))
-                        (old-chance (gethash val m 0.0)))
-                   (puthash val (+ old-chance v) m)))
+                 (let ((val (funcall f k)))
+                   (ch/--update-event val v m)))
              v)
     m))
 
@@ -228,8 +226,7 @@ This function accepts a `:test' keyword argument like so:
      #'(lambda (k v)
          (maphash
           #'(lambda (k1 v1)
-              (let ((acc (gethash k1 m 0.0)))
-                (puthash k1 (+ acc (* v v1)) m)))
+              (ch/--update-event k1 (ch/--rat-* v v1) m))
           (funcall mf k)))
      ma)
     m))
@@ -297,9 +294,9 @@ NOTE: no need for quoting the test function."
   "Print a probability distribution."
   (maphash
    #'(lambda (k v)
-       (princ (format "%s -> %f\n"
+       (princ (format "%s -> %s\n"
                       (prin1-to-string k)
-                      v)))
+                      (ch/--print-rational v))))
    m))
 
 (provide 'chance)
