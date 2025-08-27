@@ -20,7 +20,10 @@
 ;; ;; nil -> 215/216
 ;; ;; nil
 
-(defun ch/make-rational (n d) (cons n d))
+(defun ch/make-rational (n d)
+  "`(ch/make-rational n d)' creates a rational number with numerator `n'
+and denominator `d'"
+  (cons n d))
 
 (defvar ch/--zero (ch/make-rational 0 1))
 (defvar ch/--one  (ch/make-rational 1 1))
@@ -80,7 +83,8 @@ to happen."
   "Extract the test function from the argument list.
 This is for simulating a `:test' keyword argument.
 
-	(cl-destructuring-bind (test-fn . args) (ch/--extract-test-fn (list 'a :test 'eq 'b))
+	(cl-destructuring-bind
+	    (test-fn . args) (ch/--extract-test-fn (list 'a :test 'eq 'b))
 	  (list test-fn args))
 
 	;; (eq (a b))"
@@ -99,8 +103,9 @@ This is for simulating a `:test' keyword argument.
 
 
 (defun ch/same (&rest values)
-  "Create a probability distribution where every event has the same chance of happening.
-Duplicates are allowed and are counted more than once.  For example:
+  "Create a probability distribution where every event has the same chance
+of happening.  Duplicates are allowed and are counted more than once.
+For example:
 
 	(let ((monty-hall-first-choice (ch/same 'win 'lose 'lose)))
 	  (ch/print monty-hall-first-choice))
@@ -137,12 +142,16 @@ This function also takes a `:test' argument like so:
         (ch/--update-event value chance m)))))
 
 (defun ch/events (&rest pairs)
-  "Creare a probability distribution where the chance for a given event is provided.
-Event / chance pairs are provided as cons cells.  Events without chance evenly
-fill up the rest of the distribution.
+  "Creare a probability distribution where the chance for a given event is
+provided.  Event / chance pairs are provided as cons cells.  Events
+without chance evenly fill up the rest of the distribution.
 
 	(ch/print
-	  (ch/events `(a . ,(ch/make-rational 1 10)) 'b `(c . ,(ch/make-rational 2 10)) 'd))
+	  (ch/events
+	    `(a . ,(ch/make-rational 1 10))
+	    'b
+	    `(c . ,(ch/make-rational 2 10))
+	    'd))
 
 	;; a -> 1/10
 	;; c -> 1/5
@@ -178,7 +187,8 @@ There are infinite ways that this can go wrong and none of them are checked:
         m))))
 
 (defun ch/map (f v)
-  "Apply transform `f' to the events in `v'.  This might change the number of events.  See:
+  "Apply transform `f' to the events in `v'.  This might change the number
+of events.  See:
 
 	(ch/print (ch/map #'cl-oddp (ch/same 1 2 3 4 5)))
 
@@ -193,13 +203,15 @@ There are infinite ways that this can go wrong and none of them are checked:
     m))
 
 (defun ch/d (sides)
-  "Simulate a dice throw.  For example `(ch/d 6)' represents throwing a six-sided die."
+  "Simulate a dice throw.  For example `(ch/d 6)' represents throwing a
+six-sided die."
   (apply #'ch/same
          (cl-loop for i from 1 to sides
                   collect i)))
 
 (defun ch/bind (ma mf &rest keyword-args)
-  "Monadic bind.  Applies `mf' to all events in `ma' and combines the resulting events
+  "Monadic bind.  Applies `mf' to all events in `ma' and combines the
+resulting events
 under a single distribution.
 
 Example:
@@ -256,11 +268,12 @@ is equvalent to:
 	(ch/bind form
 	         #'(lambda (value) E[value]))
 
-Multiple binding are possible and the form of a binding can refer to a previous value:
+Multiple binding are possible and the form of a binding can refer to a
+previous value:
 
-Throwing with a six sided dice.  If the result is bigger than 3 then cast another six
-sided die, otherwise cast a 20 sided die.  What's the chance that the second throw is
-bigger than 3?
+Throwing with a six sided dice.  If the result is bigger than 3 then
+cast another six sided die, otherwise cast a 20 sided die.  What's the
+chance that the second throw is bigger than 3?
 
 	(ch/print
 	 (ch/let! ((d1 (ch/d 6))
@@ -271,7 +284,8 @@ bigger than 3?
 	;; t -> 27/40
 	;; nil
 
-Bindings can contain a `:test' keyword argument which is passed along to `ch/bind'
+Bindings can contain a `:test' keyword argument which is passed along to
+`ch/bind'
 
 	(ch/let! ((val form :test eq))
 	  E[val])
