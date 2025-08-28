@@ -1,0 +1,61 @@
+# -*- mode:org -*-
+#+OPTIONS: num:nil toc:nil ^:nil ':nil
+#+TITLE: chance.el
+#+AUTHOR: Bence Fabian
+
+* A library working with probability distributions.
+
+An example usage:
+
+Chance of going to jail in monopoly because of throwing three
+doubles.
+#+begin_src emacs-lisp
+  (ch/print
+   (ch/let! ((d1 (ch/d 6))
+             (d2 (ch/d 6))
+             (d3 (ch/d 6))
+             (d4 (ch/d 6))
+             (d5 (ch/d 6))
+             (d6 (ch/d 6)))
+     (ch/pure (and (= d1 d2)
+                   (= d3 d4)
+                   (= d5 d6)))))
+
+  ;; t -> 1/216
+  ;; nil -> 215/216
+  ;; nil
+#+end_src
+
+Chance of randomly selected two arrows are not cursed from a quiver
+of ten when five of them are cursed.  From https://xkcd.com/3015/
+
+#+begin_src emacs-lisp
+  (ch/print
+   (ch/let! ((arrow1 (ch/events `(normal . ,(ch/make-rational 5 10)) 'cursed))
+             (arrow2 (cl-case arrow1
+                       ((normal) (ch/events `(normal . ,(ch/make-rational 4 9)) 'cursed))
+                       (otherwise (ch/events `(normal . ,(ch/make-rational 5 9)) 'cursed)))))
+    (ch/pure (if (and (eq arrow1 'normal)
+                      (eq arrow2 'normal))
+                 'not-cursed 'cursed))))
+
+  ;; not-cursed -> 2/9
+  ;; cursed -> 7/9
+  ;; nil
+#+end_src
+
+And the suggested dice throw:
+
+#+begin_src emacs-lisp
+  (ch/print
+   (ch/let! ((d1 (ch/d 6))
+             (d2 (ch/d 6))
+             (d3 (ch/d 6))
+             (d4 (ch/d 4)))
+     (ch/pure (if (<= 16 (+ d1 d2 d3 d4))
+                  'not-cursed 'cursed))))
+
+  ;; cursed -> 7/9
+  ;; not-cursed -> 2/9
+  ;; nil
+#+end_src
