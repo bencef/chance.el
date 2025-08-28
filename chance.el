@@ -16,22 +16,106 @@
 ;;                  (= d3 d4)
 ;;                  (= d5 d6)))))
 ;;
-;; ;; t -> 0.004630
-;; ;; nil -> 0.995370
+;; ;; t -> 1/216
+;; ;; nil -> 215/216
 ;; ;; nil
+;;
+;; Chance of randomly selected two arrows are not cursed from a quiver
+;; of ten when five of them are cursed.  From https://xkcd.com/3015/
+;;
+;; (ch/print
+;;  (ch/let! ((arrow1 (ch/events `(normal . ,(ch/make-rational 5 10)) 'cursed))
+;;            (arrow2 (cl-case arrow1
+;;                      ((normal) (ch/events `(normal . ,(ch/make-rational 4 9)) 'cursed))
+;;                      (otherwise (ch/events `(normal . ,(ch/make-rational 5 9)) 'cursed)))))
+;;   (ch/pure (if (and (eq arrow1 'normal)
+;;                     (eq arrow2 'normal))
+;;                'not-cursed 'cursed))))
+;;
+;; ;; not-cursed -> 2/9
+;; ;; cursed -> 7/9
+;; ;; nil
+;;
+;; And the suggested dice throw:
+;;
+;; (ch/print
+;;  (ch/let! ((d1 (ch/d 6))
+;;            (d2 (ch/d 6))
+;;            (d3 (ch/d 6))
+;;            (d4 (ch/d 4)))
+;;    (ch/pure (if (<= 16 (+ d1 d2 d3 d4))
+;;                 'not-cursed 'cursed))))
+;;
+;; ;; cursed -> 7/9
+;; ;; not-cursed -> 2/9
+;; ;; nil
+
+
+(defun ch/make-rational (n d)
+  "`(ch/make-rational n d)' creates a rational number with numerator `n'
+and denominator `d'"
+  (cons n d))
+
+(defvar ch/--zero (ch/make-rational 0 1))
+(defvar ch/--one  (ch/make-rational 1 1))
+
+(defun ch/--rat-+ (&rest rats) ;; RATS!!!
+  (let ((lcm (apply #'cl-lcm (mapcar #'cdr rats))))
+    (cl-labels
+        ((get-n (rat)
+           (cl-destructuring-bind (n . d) rat
+             (* n (/ lcm d)))))
+      (let* ((ns (mapcar #'get-n rats))
+             (n (apply #'+ ns)))
+        (ch/make-rational n lcm)))))
+
+(defun ch/--rat-* (a b)
+  (cl-destructuring-bind
+      ((n1 . d1) . (n2 . d2))
+      (cons a b)
+    (let* ((gcd-n1-d2 (cl-gcd n1 d2))
+           (gcd-n2-d1 (cl-gcd n2 d1))
+           (n1 (/ n1 gcd-n1-d2))
+           (n2 (/ n2 gcd-n2-d1))
+           (d1 (/ d1 gcd-n2-d1))
+           (d2 (/ d2 gcd-n1-d2)))
+      (ch/make-rational (* n1 n2) (* d1 d2)))))
+
+(defun ch/--update-event (value chance m)
+  (let ((acc (gethash value m ch/--zero)))
+          (puthash value (ch/--rat-+ acc chance) m)))
+
+(defun ch/--rat-complement-1 (rat)
+  (cl-destructuring-bind (n . d) rat
+    (ch/make-rational (- d n) d)))
+
+(defun ch/--rat-simplify (rat)
+  (cl-destructuring-bind (n . d) rat
+    (let ((gcd (cl-gcd n d)))
+      (ch/make-rational (/ n gcd) (/ d gcd)))))
+
+(defun ch/--rational-p (x)
+  (and (consp x)
+       (numberp (car x))
+       (numberp (cdr x))))
+
+(defun ch/--print-rational (rat)
+  (cl-destructuring-bind (n . d) (ch/--rat-simplify rat)
+    (format "%d/%d" n d)))
 
 (defun ch/pure (v)
   "Create a distribution with a single event that is 100% certain
 to happen."
   (let ((m (make-hash-table :size 1)))
-    (puthash v 1.0 m)
+    (puthash v ch/--one m)
     m))
 
 (defun ch/--extract-test-fn (args)
   "Extract the test function from the argument list.
 This is for simulating a `:test' keyword argument.
 
-	(cl-destructuring-bind (test-fn . args) (ch/--extract-test-fn (list 'a :test 'eq 'b))
+	(cl-destructuring-bind
+	    (test-fn . args) (ch/--extract-test-fn (list 'a :test 'eq 'b))
 	  (list test-fn args))
 
 	;; (eq (a b))"
@@ -50,109 +134,115 @@ This is for simulating a `:test' keyword argument.
 
 
 (defun ch/same (&rest values)
-  "Create a probability distribution where every event has the same chance of happening.
-Duplicates are allowed and are counted more than once.  For example:
+  "Create a probability distribution where every event has the same chance
+of happening.  Duplicates are allowed and are counted more than once.
+For example:
 
 	(let ((monty-hall-first-choice (ch/same 'win 'lose 'lose)))
-          (ch/print monty-hall-first-choice))
+	  (ch/print monty-hall-first-choice))
 
-	;; win -> 0.333333
-	;; lose -> 0.666667
+	;; win -> 1/3
+	;; lose -> 2/3
 	;; nil
 
 This function also takes a `:test' argument like so:
 
 	(ch/print
-	 (ch/same (cons 1 2) (cons 1 2)))
+	  (ch/same (cons 1 2) (cons 1 2)))
 
-	;; (1 . 2) -> 0.500000
-	;; (1 . 2) -> 0.500000
+	;; (1 . 2) -> 1/2
+	;; (1 . 2) -> 1/2
 	;; nil
 
 	(ch/print
-	 (ch/same :test 'equal (cons 1 2) (cons 1 2)))
+	  (ch/same :test 'equal (cons 1 2) (cons 1 2)))
 
-	;; (1 . 2) -> 1.000000
+	;; (1 . 2) -> 1/1
 	;; nil
 
 	(ch/print
-	 (ch/same (cons 1 2) (cons 1 2) :test 'equal))
+	  (ch/same (cons 1 2) (cons 1 2) :test 'equal))
 
-	;; (1 . 2) -> 1.000000
+	;; (1 . 2) -> 1/1
 	;; nil"
   (cl-destructuring-bind (test-fn . values) (ch/--extract-test-fn values)
     (let* ((size (length values))
-           (m (make-hash-table :size size :test test-fn)))
+           (m (make-hash-table :size size :test test-fn))
+           (chance (ch/make-rational 1 size)))
       (dolist (value values m)
-        (let ((acc (gethash value m 0.0)))
-          (puthash value (+ acc (/ 1.0 (float size))) m))))))
+        (ch/--update-event value chance m)))))
 
 (defun ch/events (&rest pairs)
-  "Creare a probability distribution where the chance for a given event is provided.
-Event / chance pairs are provided as cons cells.  Events without chance evenly
-fill up the rest of the distribution.
+  "Creare a probability distribution where the chance for a given event is
+provided.  Event / chance pairs are provided as cons cells.  Events
+without chance evenly fill up the rest of the distribution.
 
 	(ch/print
-	 (ch/events `(a . ,0.1) 'b `(c . ,0.2) 'd))
+	  (ch/events
+	    `(a . ,(ch/make-rational 1 10))
+	    'b
+	    `(c . ,(ch/make-rational 2 10))
+	    'd))
 
-	;; a -> 0.100000
-	;; c -> 0.200000
-	;; b -> 0.350000
-	;; d -> 0.350000
+	;; a -> 1/10
+	;; c -> 1/5
+	;; b -> 7/20
+	;; d -> 7/20
 	;; nil
 
 This function takes a `:test' keyword argument.  See the documentation of
 the `ch/same' function.
 
 There are infinite ways that this can go wrong and none of them are checked:
-- Sum over 1.0
+- Sum over 1/1
 - Events represented as cons cells with a number in cdr
 - The same event with and without an explicit chance
 - Etc."
   (cl-destructuring-bind (test-fn . pairs) (ch/--extract-test-fn pairs)
-    (cl-labels ((has-chance (x) (and (consp x) (cl-typep (cdr x) 'float)))
+    (cl-labels ((has-chance (x) (and (consp x) (ch/--rational-p (cdr x))))
                 (standalone (x) (not (has-chance x))))
       (let ((with-chance (cl-remove-if-not #'has-chance pairs))
             (without-chance (cl-remove-if-not #'standalone pairs))
-            (acc 0.0)
+            (acc ch/--zero)
             (m (make-hash-table :size (length pairs))))
         ;; Collect events with explicit chances
         (cl-loop for (e . c) in with-chance
-                 do (progn (cl-incf acc c)
-                           (let ((old (gethash e m 0.0)))
-                             (puthash e (+ old c) m))))
+                 do (progn (setq acc (ch/--rat-+ acc c))
+                           (ch/--update-event e c m)))
         ;; All remaining events have the same chance
-        (let ((c (/ (- 1.0 acc) (length without-chance))))
-          (dolist (e without-chance)
-            (let ((old (gethash e m 0.0)))
-              (puthash e (+ old c) m))))
+        (when (> (length without-chance) 0)
+          (let ((c (ch/--rat-* (ch/--rat-complement-1 acc)
+                               (ch/make-rational 1 (length without-chance)))))
+            (dolist (e without-chance)
+              (ch/--update-event e c m))))
         m))))
 
-
 (defun ch/map (f v)
-  "Apply transform `f' to the events in `v'.  This might change the number of events.  See:
+  "Apply transform `f' to the events in `v'.  This might change the number
+of events.  See:
 
-	(ch/print (ch/map #'oddp (ch/same 1 2 3 4 5)))
+	(ch/print (ch/map #'cl-oddp (ch/same 1 2 3 4 5)))
 
-	;; t -> 0.600000
-	;; nil -> 0.400000
+	;; t -> 3/5
+	;; nil -> 2/5
 	;; nil"
   (let ((m (make-hash-table)))
     (maphash #'(lambda (k v)
-                 (let* ((val (funcall f k))
-                        (old-chance (gethash val m 0.0)))
-                   (puthash val (+ old-chance v) m)))
+                 (let ((val (funcall f k)))
+                   (ch/--update-event val v m)))
              v)
     m))
 
 (defun ch/d (sides)
-  "Simulate a dice throw.  For example `(ch/d 6)' represents throwing a six-sided die."
+  "Simulate a dice throw.  For example `(ch/d 6)' represents throwing a
+six-sided die."
   (apply #'ch/same
          (cl-loop for i from 1 to sides
                   collect i)))
 
 (defun ch/bind (ma mf &rest keyword-args)
-  "Monadic bind.  Applies `mf' to all events in `ma' and combines the resulting events
+  "Monadic bind.  Applies `mf' to all events in `ma' and combines the
+resulting events
 under a single distribution.
 
 Example:
@@ -166,8 +256,8 @@ After a coin flip if it was tails it can be rethrown once:
 	    (ch/print
 	     (ch/bind toss #'maybe-rethrow))))
 
-	;; heads -> 0.750000
-	;; tails -> 0.250000
+	;; heads -> 3/4
+	;; tails -> 1/4
 	;; nil
 
 This function accepts a `:test' keyword argument like so:
@@ -179,8 +269,7 @@ This function accepts a `:test' keyword argument like so:
      #'(lambda (k v)
          (maphash
           #'(lambda (k1 v1)
-              (let ((acc (gethash k1 m 0.0)))
-                (puthash k1 (+ acc (* v v1)) m)))
+              (ch/--update-event k1 (ch/--rat-* v v1) m))
           (funcall mf k)))
      ma)
     m))
@@ -210,22 +299,24 @@ is equvalent to:
 	(ch/bind form
 	         #'(lambda (value) E[value]))
 
-Multiple binding are possible and the form of a binding can refer to a previous value:
+Multiple binding are possible and the form of a binding can refer to a
+previous value:
 
-Throwing with a six sided dice.  If the result is bigger than 3 then cast another six
-sided die, otherwise cast a 20 sided die.  What's the chance that the second throw is
-bigger than 3?
+Throwing with a six sided dice.  If the result is bigger than 3 then
+cast another six sided die, otherwise cast a 20 sided die.  What's the
+chance that the second throw is bigger than 3?
 
 	(ch/print
 	 (ch/let! ((d1 (ch/d 6))
 	           (ds (if (> d1 3) (ch/d 6) (ch/d 20))))
 	   (ch/pure (> ds 3))))
 
-	;; nil -> 0.325000
-	;; t -> 0.675000
+	;; nil -> 13/40
+	;; t -> 27/40
 	;; nil
 
-Bindings can contain a `:test' keyword argument which is passed along to `ch/bind'
+Bindings can contain a `:test' keyword argument which is passed along to
+`ch/bind'
 
 	(ch/let! ((val form :test eq))
 	  E[val])
@@ -248,9 +339,9 @@ NOTE: no need for quoting the test function."
   "Print a probability distribution."
   (maphash
    #'(lambda (k v)
-       (princ (format "%s -> %f\n"
+       (princ (format "%s -> %s\n"
                       (prin1-to-string k)
-                      v)))
+                      (ch/--print-rational v))))
    m))
 
 (provide 'chance)
