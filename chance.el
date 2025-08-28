@@ -1,60 +1,62 @@
-;; A library working with probability distributions.
-;;
-;; An example usage:
-;;
-;; Chance of going to jail in monopoly because of throwing three
-;; doubles.
-;;
-;; (ch/print
-;;  (ch/let! ((d1 (ch/d 6))
-;;            (d2 (ch/d 6))
-;;            (d3 (ch/d 6))
-;;            (d4 (ch/d 6))
-;;            (d5 (ch/d 6))
-;;            (d6 (ch/d 6)))
-;;    (ch/pure (and (= d1 d2)
-;;                  (= d3 d4)
-;;                  (= d5 d6)))))
-;;
-;; ;; t -> 1/216
-;; ;; nil -> 215/216
-;; ;; nil
-;;
-;; Chance of randomly selected two arrows are not cursed from a quiver
-;; of ten when five of them are cursed.  From https://xkcd.com/3015/
-;;
-;; (ch/print
-;;  (ch/let! ((arrow1 (ch/events `(normal . ,(ch/make-rational 5 10)) 'cursed))
-;;            (arrow2 (cl-case arrow1
-;;                      ((normal) (ch/events `(normal . ,(ch/make-rational 4 9)) 'cursed))
-;;                      (otherwise (ch/events `(normal . ,(ch/make-rational 5 9)) 'cursed)))))
-;;   (ch/pure (if (and (eq arrow1 'normal)
-;;                     (eq arrow2 'normal))
-;;                'not-cursed 'cursed))))
-;;
-;; ;; not-cursed -> 2/9
-;; ;; cursed -> 7/9
-;; ;; nil
-;;
-;; And the suggested dice throw:
-;;
-;; (ch/print
-;;  (ch/let! ((d1 (ch/d 6))
-;;            (d2 (ch/d 6))
-;;            (d3 (ch/d 6))
-;;            (d4 (ch/d 4)))
-;;    (ch/pure (if (<= 16 (+ d1 d2 d3 d4))
-;;                 'not-cursed 'cursed))))
-;;
-;; ;; cursed -> 7/9
-;; ;; not-cursed -> 2/9
-;; ;; nil
+;;;; A library working with probability distributions.
+;;;;
+;;;; An example usage:
+;;;;
+;;;; Chance of going to jail in monopoly because of throwing three
+;;;; doubles.
+;;;;
+;;;; (ch/print
+;;;;  (ch/let! ((d1 (ch/d 6))
+;;;;            (d2 (ch/d 6))
+;;;;            (d3 (ch/d 6))
+;;;;            (d4 (ch/d 6))
+;;;;            (d5 (ch/d 6))
+;;;;            (d6 (ch/d 6)))
+;;;;    (ch/pure (and (= d1 d2)
+;;;;                  (= d3 d4)
+;;;;                  (= d5 d6)))))
+;;;;
+;;;; ;; t -> 1/216
+;;;; ;; nil -> 215/216
+;;;; ;; nil
+;;;;
+;;;; Chance of randomly selected two arrows are not cursed from a quiver
+;;;; of ten when five of them are cursed.  From https://xkcd.com/3015/
+;;;;
+;;;; (ch/print
+;;;;  (ch/let! ((arrow1 (ch/events `(normal . ,(ch/make-rational 5 10)) 'cursed))
+;;;;            (arrow2 (cl-case arrow1
+;;;;                      ((normal) (ch/events `(normal . ,(ch/make-rational 4 9)) 'cursed))
+;;;;                      (otherwise (ch/events `(normal . ,(ch/make-rational 5 9)) 'cursed)))))
+;;;;   (ch/pure (if (and (eq arrow1 'normal)
+;;;;                     (eq arrow2 'normal))
+;;;;                'not-cursed 'cursed))))
+;;;;
+;;;; ;; not-cursed -> 2/9
+;;;; ;; cursed -> 7/9
+;;;; ;; nil
+;;;;
+;;;; And the suggested dice throw:
+;;;;
+;;;; (ch/print
+;;;;  (ch/let! ((d1 (ch/d 6))
+;;;;            (d2 (ch/d 6))
+;;;;            (d3 (ch/d 6))
+;;;;            (d4 (ch/d 4)))
+;;;;    (ch/pure (if (<= 16 (+ d1 d2 d3 d4))
+;;;;                 'not-cursed 'cursed))))
+;;;;
+;;;; ;; cursed -> 7/9
+;;;; ;; not-cursed -> 2/9
+;;;; ;; nil
 
+;;; Constructor for rationals
 
 (defun ch/make-rational (n d)
-  "`(ch/make-rational n d)' creates a rational number with numerator `n'
-and denominator `d'"
+  "Creates a rational number with numerator `n' and denominator `d'"
   (cons n d))
+
+;;; Various helpers for rationals.  Intended to be private.
 
 (defvar ch/--zero (ch/make-rational 0 1))
 (defvar ch/--one  (ch/make-rational 1 1))
@@ -102,6 +104,8 @@ and denominator `d'"
 (defun ch/--print-rational (rat)
   (cl-destructuring-bind (n . d) (ch/--rat-simplify rat)
     (format "%d/%d" n d)))
+
+;;; The public functions of the library
 
 (defun ch/pure (v)
   "Create a distribution with a single event that is 100% certain
@@ -195,7 +199,7 @@ the `ch/same' function.
 
 There are infinite ways that this can go wrong and none of them are checked:
 - Sum over 1/1
-- Events represented as cons cells with a number in cdr
+- Events represented as cons cells with a rational in cdr
 - The same event with and without an explicit chance
 - Etc."
   (cl-destructuring-bind (test-fn . pairs) (ch/--extract-test-fn pairs)
@@ -242,8 +246,7 @@ six-sided die."
 
 (defun ch/bind (ma mf &rest keyword-args)
   "Monadic bind.  Applies `mf' to all events in `ma' and combines the
-resulting events
-under a single distribution.
+resulting events under a single distribution.
 
 Example:
 After a coin flip if it was tails it can be rethrown once:
