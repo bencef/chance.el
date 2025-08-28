@@ -19,6 +19,37 @@
 ;; ;; t -> 1/216
 ;; ;; nil -> 215/216
 ;; ;; nil
+;;
+;; Chance of randomly selected two arrows are not cursed from a quiver
+;; of ten when five of them are cursed.  From https://xkcd.com/3015/
+;;
+;; (ch/print
+;;  (ch/let! ((arrow1 (ch/events `(normal . ,(ch/make-rational 5 10)) 'cursed))
+;;            (arrow2 (cl-case arrow1
+;;                      ((normal) (ch/events `(normal . ,(ch/make-rational 4 9)) 'cursed))
+;;                      (otherwise (ch/events `(normal . ,(ch/make-rational 5 9)) 'cursed)))))
+;;   (ch/pure (if (and (eq arrow1 'normal)
+;;                     (eq arrow2 'normal))
+;;                'not-cursed 'cursed))))
+;;
+;; ;; not-cursed -> 2/9
+;; ;; cursed -> 7/9
+;; ;; nil
+;;
+;; And the suggested dice throw:
+;;
+;; (ch/print
+;;  (ch/let! ((d1 (ch/d 6))
+;;            (d2 (ch/d 6))
+;;            (d3 (ch/d 6))
+;;            (d4 (ch/d 4)))
+;;    (ch/pure (if (<= 16 (+ d1 d2 d3 d4))
+;;                 'not-cursed 'cursed))))
+;;
+;; ;; cursed -> 7/9
+;; ;; not-cursed -> 2/9
+;; ;; nil
+
 
 (defun ch/make-rational (n d)
   "`(ch/make-rational n d)' creates a rational number with numerator `n'
