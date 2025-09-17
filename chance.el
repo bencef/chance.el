@@ -1,3 +1,5 @@
+;;; -*- lexical-binding: t -*-
+
 ;;;; A library working with probability distributions.
 ;;;;
 ;;;; An example usage:
