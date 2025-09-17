@@ -103,9 +103,14 @@
        (numberp (car x))
        (numberp (cdr x))))
 
-(defun ch/--print-rational (rat)
-  (cl-destructuring-bind (n . d) (ch/--rat-simplify rat)
-    (format "%d/%d" n d)))
+(defun ch/--print-rational (rat &optional cust-d)
+  (if cust-d
+      (cl-destructuring-bind (n . d) rat
+        (let* ((ratio (/ cust-d d))
+               (n (* n ratio)))
+          (format "%d/%d" n cust-d)))
+    (cl-destructuring-bind (n . d) (ch/--rat-simplify rat)
+      (format "%d/%d" n d))))
 
 ;;; The public functions of the library
 
@@ -340,13 +345,22 @@ NOTE: no need for quoting the test function."
                             (ch/let! ,(cl-rest bindings) ,@body))
                     :test ',test-fn))))))
 
-(defun ch/print (m)
-  "Print a probability distribution."
-  (maphash
-   #'(lambda (k v)
-       (princ (format "%s -> %s\n"
-                      (prin1-to-string k)
-                      (ch/--print-rational v))))
-   m))
+(defun ch/print (m &optional normalize)
+  "Print a probability distribution.  If `normalize' is non-nil then print
+all ratios with the same denominator."
+  (let ((max-d nil))
+    (when normalize
+      (maphash
+       #'(lambda (_k v)
+           (let ((d (cdr v)))
+             (when (or (null max-d) (< max-d d))
+               (setq max-d d))))
+       m))
+    (maphash
+     #'(lambda (k v)
+         (princ (format "%s -> %s\n"
+                        (prin1-to-string k)
+                        (ch/--print-rational v max-d))))
+     m)))
 
 (provide 'chance)
